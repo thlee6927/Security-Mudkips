@@ -63,7 +63,7 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
 void bank_process_remote_command(Bank *bank, char *command, size_t len)
 {
     // TODO: Implement the bank side of the ATM-bank protocol
-
+    printf("yo i did something\n");
 	/*
 	 * The following is a toy example that simply receives a
 	 * string from the ATM, prepends "Bank got: " and echoes 
