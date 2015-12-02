@@ -20,6 +20,15 @@
 #include <netinet/in.h>
 #include <stdio.h>
 
+typedef struct listnode{
+	char *name;
+	int balance;
+	char PIN[4];
+
+	struct listnode *next;
+	struct listnode *prev;
+}Node;
+
 typedef struct _Bank
 {
     // Networking state
@@ -27,6 +36,7 @@ typedef struct _Bank
     struct sockaddr_in rtr_addr;
     struct sockaddr_in bank_addr;
 
+    Node *clientHead;
     // Protocol state
     // TODO add more, as needed
 } Bank;
@@ -37,6 +47,9 @@ ssize_t bank_send(Bank *bank, char *data, size_t data_len);
 ssize_t bank_recv(Bank *bank, char *data, size_t max_data_len);
 void bank_process_local_command(Bank *bank, char *command, size_t len);
 void bank_process_remote_command(Bank *bank, char *command, size_t len);
+
+Node *get_client(Node *head, char *nom);
+int num_clients(Node *head);
 
 #endif
 
