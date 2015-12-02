@@ -16,6 +16,11 @@
 #include <netinet/in.h>
 #include <stdio.h>
 
+typedef struct person{
+	char *name;
+	char PIN[4];
+} User;
+
 typedef struct _ATM
 {
     // Networking state
@@ -25,12 +30,9 @@ typedef struct _ATM
 
     // Protocol state
     // TODO add more, as needed
-} ATM;
+    User *currentUser;
 
-typedef struct person{
-	char *currentUser;
-	char PIN[4];
-} User;
+} ATM;
 
 ATM* atm_create();
 void atm_free(ATM *atm);

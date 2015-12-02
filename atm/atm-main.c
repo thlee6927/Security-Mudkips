@@ -9,7 +9,6 @@
 #include <stdlib.h>
 
 static const char prompt[] = "ATM: ";
-extern char *currentUser = NULL;
 
 int main()
 {
@@ -24,8 +23,8 @@ int main()
     {
         atm_process_command(atm, user_input);
 
-        if(currentUser != NULL) {
-            printf("ATM (%s): \n", currentUser);
+        if(atm->currentUser != NULL) {
+            printf("ATM (%s): \n", atm->currentUser->name);
         }
         else {
             printf("%s", prompt);

@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
-
-extern char *currentUser = NULL; //to see if there's already a user logged in
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <openssl/evp.h>
 
 ATM* atm_create()
 {
@@ -32,6 +34,7 @@ ATM* atm_create()
 
     // Set up the protocol state
     // TODO set up more, as needed
+    OpenSSL_add_all_digests();
 
     return atm;
 }
@@ -58,25 +61,17 @@ ssize_t atm_recv(ATM *atm, char *data, size_t max_data_len)
     return recvfrom(atm->sockfd, data, max_data_len, 0, NULL, NULL);
 }
 
+int compHash(uint8_t *hash1, uint8_t *hash2){
+    int i = 0;
+    for(i = 0; i < 32; i++){
+        if(*(hash1 + i) != *(hash2 + i))
+            return 0;
+    }
+    return 1;
+}
+
 void atm_process_command(ATM *atm, char *command)
 {
-    // TODO: Implement the ATM's side of the ATM-bank protocol
-
-	/*
-	 * The following is a toy example that simply sends the
-	 * user's command to the bank, receives a message from the
-	 * bank, and then prints it to stdout.
-	 */
-
-	/*
-    char recvline[10000];
-    int n;
-
-    atm_send(atm, command, strlen(command));
-    n = atm_recv(atm,recvline,10000);
-    recvline[n]=0;
-    fputs(recvline,stdout);
-	*/
 
     char *token = strtok(command, " ");
     char *invalid;
@@ -85,125 +80,248 @@ void atm_process_command(ATM *atm, char *command)
         char *username = strtok(NULL, " "); //gets user name (aka next token)
 
         invalid = strtok(NULL, " "); //checks to make sure no extra words afterwards
-
         if((strlen(username) > 250) || (isChar(username, strlen(username)) == 0) || (invalid != NULL)) {
             printf("Usage: begin-session <user-name>\n");
         } //invalid inputs
-        else if(strlen(currentUser) != 0) {
-            printf("A user is already logged in\n");
-        } //already user logged in
-        else if() {
+        else{
+            if(atm->currentUser != NULL){
+                printf("A user is already logged in\n");
+            }
+            else{
+                uint8_t *sendData;
+                int namelen = strlen(username);
+                int datalen = namelen + 5;
+                uint8_t retData[2];
 
-            //IF NO SUCH USERNAME EXISTS WITH THE BANK
+                sendData = malloc(datalen);
+                sendData[0] = 1;
+
+                namelen = htonl(namelen);
+                memcpy(sendData +1, &namelen, 4);
+                memcpy(sendData + 5, username, strlen(username));
+                //TODO Send and recv from bank yo
+
+                atm_send(atm, sendData, datalen);
+
+                atm_recv(atm, retData, 2);
+
+                if(retData[1] == 1){
+                    char *fileName = username; //formats to the file name
+                    char *pinInput = NULL;
+                    File *file;
+
+                    sprintf(fileName, "%s.card", username);
+                    file = fopen(fileName, "r");
+                    if (file != NULL) {
+                        int holdnamelen;
+                        char holdname[255];
+                        uint8_t pinhash[32];
+
+                        fread(&holdnamelen, 4, 1, file);
+                        fread(holdname, 1, holdnamelen, file);
+                        fread(pinhash, 1, 32, file);
+
+
+                        printf("PIN? ");
+
+                        fgets(pinInput, 10000, stdin);
+
+                        if(strlen(pinInput) != 4 || isNum(pinInput, strlen(pinInput)) == 0) {
+                            printf("Not authorized\n");
+                        }
+                        else {
+                            EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+                            uint8_t thehash[32];
+                            int hashlen;
+
+                            EVP_DigestInit_ex(ctx, EVP_sha256(), NULL);
+
+                            EVP_DigestUpdate(ctx, pinInput, 4);
+                            EVP_DigestFinal_ex(ctx, thehash, &hashlen);
+                            EVP_MD_CTX_destroy(ctx);
+
+                            if(compHash(pinhash, thehash) == 0){
+                                printf("Not authorized\n");
+                            }
+                            else{
+                                User *user = malloc(sizeof(User));
+
+                                user->name = malloc(strlen(username) + 1);
+                                strcpy(user->name, username, strlen(username));
+
+                                user->PIN[0] = pinInput[0];
+                                user->PIN[1] = pinInput[1];
+                                user->PIN[2] = pinInput[2];
+                                user->PIN[3] = pinInput[3];
+
+                                printf("Authorized\n");
+
+                                atm->currentUser = user;
+
+                            }
+                        }
+                    }
+                    else{
+                        printf("Unable to access %s's card\n", username);
+                    }
+                }
+                else{
+                    printf("No such user\n");
+                }
+            }
+        }
+    }
+    else{
+        if((strcmp ("withdraw", token)) == 0) {
+            char *amtStr = strtok(NULL, " ");
+            invalid = strtok(NULL, " ");
+
+            if(atm->currentUser == NULL) {
+                printf("No user logged in\n");
+            }
+            else {
+                if(isNum(amtStr, strlen(amtStr)) == 0 || invalid != NULL || (atoi(amtStr) > INT_MAX)) {
+                    printf("Usage: withdraw <amt>\n");
+                } //invalid inputs
+                else{
+                    int amount = atoi(amtStr);
+                    uint8_t *message;
+                    uint8_t *sendData;
+                    int namelen = strlen(atm->currentUser->name);
+                    int datalen = namelen + 8;
+                    uint8_t retData[2];
+                    uint8_t amountNL = htonl(amount);
+                    EVP_MD_CTX *hashctx = EVP_MD_CTX_create();
+                    uint8_t thehash[32];
+                    int hashlen;
+
+                    message = malloc(datalen);
+                    message[0] = 1;
+
+                    namelen = htonl(namelen);
+                    memcpy(message, &namelen, 4);
+                    memcpy(message + 4, username, strlen(username));
+                    memcpy(message + 4 + strlen(username), &amountNL, 4);
+
+                    EVP_DigestInit_ex(hashctx, EVP_sha256(), NULL);
+
+                    EVP_DigestUpdate(hashctx, atm->currentUser->PIN,4);
+                    EVP_DigestUpdate(hashctx, message, datalen);
+                    EVP_DigestFinal_ex(hashctx, thehash, &hashlen);
+                    EVP_MD_CTX_destroy(hashctx);
+
+                    sendData = malloc(datalen + 33);
+                    sendData[0] = 2;
+
+                    memcpy(sendData + 1, message, datalen);
+                    memcpy(sendData + 1 + datalen, thehash, 32);
+                    //NEED TO TALK TO ROUTER/BANK TO GET BALANCE OF USER
+
+                    atm_send(atm, sendData, datalen+33);
+
+                    atm_recv(atm, retData, 2);
+
+                    if(retData[1] == 0) {
+                        printf("Insufficient funds\n");
+                    }
+                    else {
+                        printf("$%i dispensed\n", amount);
+                    } //sufficient funds in bank
+
+                    free(message);
+                    free(sendData);
+                } //valid inputs
+            } //user logged in
 
         }
-        else {
-            char *fileName = username + ".card"; //formats to the file name
-            char *pinInput = NULL;
+        else{
+            if((strcmp ("balance", token)) == 0) {
+                invalid = strtok(NULL, " ");
 
-            if (fopen(fileName, "r") != NULL) {
-
-
-
-                //Need to read in hash to PIN in order to verify if pinInput is correct
-
-
-
-
-                printf("PIN? ");
-
-                fgets(pinInput, 10000, stdin);
-
-                if(strlen(pinInput) != 4) || (isNum(pinInput, strlen(pinInput)) == 0) || (strcmp(pinInput, ????????))) {
-                    printf("Not authorized\n");
-                    printf("ATM: ");
+                if(atm->currentUser == NULL) {
+                    printf("No user logged in\n");
                 }
                 else {
-                    printf("Authorized\n");
-                    printf("ATM (" + username + "): ");
+                    if(invalid != NULL) {
+                        printf("Usage: balance\n");
+                    }
+                    else{
+                        uint8_t *message;
+                        uint8_t *sendData;
+                        int namelen = strlen(atm->currentUser->name);
+                        int datalen = namelen + 4;
+                        uint8_t retData[6];
+                        EVP_MD_CTX *hashctx = EVP_MD_CTX_create();
+                        uint8_t thehash[32];
+                        int hashlen;
 
-                    currentUser = username; //set current user
+                        message = malloc(datalen);
+                        message[0] = 1;
+
+                        namelen = htonl(namelen);
+                        memcpy(message, &namelen, 4);
+                        memcpy(message + 4, username, strlen(username));
+
+                        EVP_DigestInit_ex(hashctx, EVP_sha256(), NULL);
+
+                        EVP_DigestUpdate(hashctx, atm->currentUser->PIN,4);
+                        EVP_DigestUpdate(hashctx, message, datalen);
+                        EVP_DigestFinal_ex(hashctx, thehash, &hashlen);
+                        EVP_MD_CTX_destroy(hashctx);
+
+                        sendData = malloc(datalen + 33);
+                        sendData[0] = 3;
+
+                        memcpy(sendData + 1, message, datalen);
+                        memcpy(sendData + 1 + datalen, thehash, 32);
+                        //NEED TO TALK TO ROUTER/BANK TO GET BALANCE OF USER
+
+                        atm_send(atm, sendData, datalen+33);
+
+                        atm_recv(atm, retData, 2);
+
+                        if(retData[1] == 1) {
+                            uint32_t balNL= *((uint32_t *)(retData+2));
+                            int balance = ntohl(balNL);
+                            printf("$%i\n",balance);
+                        }
+                        else {
+                            printf("Unauthorized");
+                        } //sufficient funds in bank
+
+                        free(message);
+                        free(sendData);
+
+                        //GET BALANCE FROM BANK
+
+                        printf("$" + balance + "\n");
+                    }
                 }
             }
-            else {
-                printf("Unable to access " + username + "'s card\n");
-            }
-        }        
-    }
-    else if((strcmp ("withdraw", token)) == 0) {
-        char *amount = strtok(NULL, " ");
+            else{
+                if((strcmp ("end-session", token)) == 0){
+                    invalid = strtok(NULL, " ");
 
-        invalid = strtok(NULL, " ");
-
-        if(strlen(currentUser) == 0) {
-            printf("No user logged in\n");
-        }
-        else {
-            if((isNum(amount, strlen(amount)) == 0) || (invalid != NULL) || (atoi(amount) > INT_MAX)) {
-                printf("Usage: withdraw <amt>\n");
-            } //invalid inputs
-            else {
-
-
-
-                //NEED TO TALK TO ROUTER/BANK TO GET BALANCE OF USER
-
-
-
-                if(amount > balance from above) {
-                    printf("Insufficient funds\n");
+                    if(atm->currentUser == NULL) {
+                        printf("No user logged in\n");
+                    }
+                    else {
+                        if(invalid != NULL) {
+                            printf("Invalid command\n");
+                        }
+                        else{
+                            free(atm->currentUser->name);
+                            free(atm->currentUser);
+                            atm->currentUser = NULL;
+                            printf("User logged out\n");
+                        }
+                    }
                 }
-                else {
-                    printf("$" + amount + " dispensed\n");
-
-
-                    //REDUCE BALANCE ACCORDINGLY IN BANK
-
-                } //sufficient funds in bank
-            } //valid inputs
-        } //user logged in
-
-    }
-    else if((strcmp ("balance", token)) == 0) {
-        invalid = strtok(NULL, " ");
-
-        if(strlen(currentUser) == 0) {
-            printf("No user logged in\n");
-        }
-        else {
-            if(invalid != NULL) {
-                printf("Usage: balance\n");
-            }
-            else {
-
-
-                //GET BALANCE FROM BANK
-
-                printf("$" + balance + "\n");
+                else{
+                    printf("Invalid command\n");
+                }
             }
         }
-    }
-    else if((strcmp ("end-session", token)) == 0){
-        invalid = strtok(NULL, " ");
-
-        if(strlen(currentUser) == 0) {
-            printf("No user logged in\n");
-        }
-        else {
-            if(invalid != NULL) {
-                printf("Invalid command\n");
-            }
-            else {
-                currentUser = NULL;
-
-                //TERMINATE CURRENT SESSION???????
-
-                printf("User logged out\n");
-            }
-        }
-    }
-    else {
-        printf("Invalid command\n");
     }
 
 }
