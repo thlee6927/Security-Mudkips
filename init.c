@@ -8,18 +8,17 @@
 #include <time.h>
 #include <dirent.h> 
 
-static const unsigned char key[32];
-static const unsigned char iv[16];
+static unsigned char key[32];
+static unsigned char iv[16];
 
 int main(int argc, char**argv) {
 	struct timeval blah;
-	int i, n, j, index;
+	int i, n, j, index, exists = 1;
 	char *second = argv[1];
-	char *path2 *fName, *next, *bankPath, *atmPath;
+	char *path2, *fName, *next, *bankPath, *atmPath;
 	FILE *bankFile, *atmFile;
 	DIR *d;
 	struct dirent *dir;
-	bool exists = false;
 
 	if(argc == 1) {
 		printf("Usage: init <filename>\n");
@@ -53,8 +52,11 @@ int main(int argc, char**argv) {
 		next = strtok(NULL, "/");
 	} //gets filename
 
-	bankPath = second + ".bank";
-	atmPath = second + ".atm";
+	bankPath = (char *) malloc(1 + strlen(second) + strlen(".bank"));
+	atmPath = (char *) malloc(1 + strlen(second) + strlen(".atm"));
+
+	strcat(bankPath, ".bank");
+	strcat(atmPath, ".atm");
 
 	d = opendir(path2);
 
@@ -65,12 +67,12 @@ int main(int argc, char**argv) {
 	else {
 		while((dir = readdir(d)) != NULL) {
 			if((strcmp(dir->d_name, bankPath) == 0) || (strcmp(dir->d_name, atmPath) == 0)) {
-				exists = true;
+				exists = 0;
 				break;
 			}
 		} //checks if the files already exist
 
-		if(exists == true) {
+		if(exists == 0) {
 			printf("Error: one of the files already exists\n");
 
 			return 63;
@@ -79,10 +81,10 @@ int main(int argc, char**argv) {
 			bankFile = fopen(bankPath, "w");
 			atmFile = fopen(atmPath, "w");
 
-			fprintf(bankFile, key);
-			fprintf(bankFile, iv);
-			fprintf(atmFile, key);
-			fprintf(atmFile, iv);
+			fprintf(bankFile, "%s", key);
+			fprintf(bankFile, "%s", iv);
+			fprintf(atmFile, "%s", key);
+			fprintf(atmFile, "%s", iv);
 
 			printf("Successfully initialized bank state\n");
 
