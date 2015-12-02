@@ -33,6 +33,9 @@ int main(int argc, char**argv) {
 		return 64;
 	} //like directory not found
 
+	fclose(bankFile);
+	fclose(atmFile);
+
 	printf("Successfully initialized bank state\n");
 
 	return 0;
