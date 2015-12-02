@@ -22,7 +22,7 @@
 
 typedef struct listnode{
 	char *name;
-	int balance;
+	unsigned int balance;
 	char PIN[4];
 
 	struct listnode *next;
@@ -36,7 +36,7 @@ typedef struct _Bank
     struct sockaddr_in rtr_addr;
     struct sockaddr_in bank_addr;
 
-    Node *clientHead;
+    struct listnode *clientHead;
     // Protocol state
     // TODO add more, as needed
 } Bank;

@@ -11,12 +11,13 @@
 
 Bank* bank_create()
 {
-    Bank *bank = (Bank*) malloc(sizeof(Bank));
+    Bank *bank = malloc(sizeof(Bank));
     if(bank == NULL)
     {
         perror("Could not allocate Bank");
         exit(1);
     }
+    bank->clientHead = NULL;
 
     // Set up the network state
     bank->sockfd=socket(AF_INET,SOCK_DGRAM,0);
@@ -36,7 +37,6 @@ Bank* bank_create()
     // TODO set up more, as needed
 
     OpenSSL_add_all_digests();
-    bank->clientHead = NULL;
 
     return bank;
 }
@@ -121,26 +121,38 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
             char *pinStr = strtok(NULL, " ");
             char *balanceStr = strtok(NULL, " ");
             char *check = strtok(NULL, " ");
-            if(name == NULL || pinStr == NULL || balanceStr == NULL || check != NULL)
+
+            if(name == NULL || pinStr == NULL || balanceStr == NULL || check != NULL){
                 printf("Usage: create-user <user-name> <pin> <balance>\n");
+            }
             else{
-                if(strlen(name) > 250 || strlen(pinStr) != 4 || isChar(name, strlen(name)) == 0 || isNum(pinStr, 4) == 0 || isNum(balanceStr, strlen(balanceStr)) == 0){
+                if(strlen(name) > 250 || strlen(pinStr) != 4 || isChar(name, strlen(name)) == 0 || isNum(pinStr, 4) == 0 || isNum(balanceStr, strlen(balanceStr)-1) == 0){
                     printf("Usage: create-user <user-name> <pin> <balance>\n");
                 }
                 else{
                     unsigned int balance = strtol(balanceStr, NULL, 10);
-                    char asdf[99];
-                    sprintf(asdf, "%d",balance);
-                    if(strlen(asdf) != strlen(balanceStr))
+                    //char asdf[12];
+                    //printf(asdf, "%d",balance);
+                    if(1 == 0) //strlen(asdf) != strlen(balanceStr)-1)
                         printf("Usage: create-user <user-name> <pin> <balance>\n");
                     else{
-                        Node *user = get_client(bank->clientHead, name);
+                        Node *user = NULL;
+                        if(bank->clientHead != NULL)
+                            user = get_client(bank->clientHead, name);
                         if(user == NULL){
                             Node *put = malloc(sizeof(Node));
                             FILE *file;
-                            char *filename;
+                            char *filename = malloc(strlen(name) + 6);
 
-                            sprintf(filename, "%s.card", name);
+
+                            memcpy(filename, name, strlen(name));
+                            filename[strlen(name)] = '.';
+                            filename[strlen(name)+1] = 'c';
+                            filename[strlen(name)+2] = 'a';
+                            filename[strlen(name)+3] = 'r';
+                            filename[strlen(name)+4] = 'd';
+                            filename[strlen(name)+5] = 0;
+
                             file = fopen(filename, "w+");
 
                             if(file != NULL){
@@ -148,9 +160,10 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
                                 uint8_t thehash[32];
                                 int hashlen;
                                 uint32_t namelen = strlen(name);
-                                unsigned char *data = malloc(4 + namelen + 32);
+                                uint8_t *data = malloc(4 + strlen(name) + 32);
                                 put->name = malloc(strlen(name) + 1);
-                                strcpy(put->name, name);
+
+                                memcpy(put->name, name, namelen+1);
 
                                 put->PIN[0] = pinStr[0];
                                 put->PIN[1] = pinStr[1];
@@ -177,11 +190,14 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
                                 fclose(file);
 
                                 printf("Created user %s\n", name);
+                                free(data);
                                 EVP_MD_CTX_destroy(ctx);
                             }
                             else
                                 printf("Error creating card file for user %s\n", name);
 
+                        
+                            free(filename);
                         }
                         else{
                             printf("Error: user %s already exists\n", name);

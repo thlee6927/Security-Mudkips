@@ -15,6 +15,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <openssl/evp.h>
+
 
 typedef struct person{
 	char *name;

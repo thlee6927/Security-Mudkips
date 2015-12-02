@@ -15,11 +15,44 @@ static const char prompt[] = "BANK: ";
 
 int main(int argc, char**argv)
 {
-   int n;
-   char sendline[1000];
-   char recvline[1000];
+  int n;
+  char sendline[1000];
+  char recvline[1000];
+  char *bankPath;
+  FILE *bankFile;
+  char *second;
+  int filenamelen = 0;
+  Bank *bank = bank_create();
 
-   Bank *bank = bank_create();
+
+  if(argc == 1) {
+    printf("Usage: Bank <filename>\n");
+    return 62; 
+  } //user fails to provide exactly one argument
+
+  second = argv[1];
+
+  filenamelen = strlen(second);
+
+  bankPath = malloc(1 + filenamelen + 5);
+
+  strncpy(bankPath, second, strlen(second));
+
+  bankPath[filenamelen] = '.';
+  bankPath[filenamelen+1] = 'b';
+  bankPath[filenamelen+2] = 'a';
+  bankPath[filenamelen+3] = 'n';
+  bankPath[filenamelen+4] = 'k';
+  bankPath[filenamelen+5] = 0;
+
+  bankFile = fopen(bankPath, "r");
+
+  if(bankFile == NULL){
+    printf("Error opening bank initialization file\n");
+    return 64;
+  }
+
+  fclose(bankFile);
 
    printf("%s", prompt);
    fflush(stdout);

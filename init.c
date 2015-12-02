@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
 #include <dirent.h> 
 
 static unsigned char key[32];
@@ -13,89 +13,84 @@ static unsigned char iv[16];
 
 int main(int argc, char**argv) {
 	struct timeval blah;
-	int i, n, j, index, exists = 1;
-	char *second = argv[1];
-	char *path2, *fName, *next, *bankPath, *atmPath;
+	int i;
+	char *second;
+	char *bankPath, *atmPath;
 	FILE *bankFile, *atmFile;
-	DIR *d;
-	struct dirent *dir;
+	int filenamelen = 0;
 
-	if(argc == 1) {
+	if(argc != 2) {
 		printf("Usage: init <filename>\n");
 		return 62; 
 	} //user fails to provide exactly one argument
 
-	gettimeofday(&blah);
+	second = argv[1];
+
+	gettimeofday(&blah, NULL);
 	srand(blah.tv_sec);
 
 	for(i = 0; i < 32; i++) {
 		key[i] = rand() % 256;
 	} //filling the key with random nums
 
-	for(n = 0; n < 16; n++) {
-		iv[n] = rand() % 256;
+	for(i = 0; i < 16; i++) {
+		iv[i] = rand() % 256;
 	} //filling the iv with random nums
 
-	for(j = 0; j < strlen(second); j++) {
-		if(second[j] == '/') {
-			index = i;
-		}
-	} //finds index of last '/' so I can freaking figure out the path2 and the filename
+	filenamelen = strlen(second);
 
-	strncpy(path2, second, index); //gets path2
+	bankPath = malloc(1 + filenamelen + 5);
+	atmPath = malloc(1 + filenamelen + 4);
 
-	fName = strtok(second, "/");
-	next = strtok(NULL, "/");
+	strncpy(bankPath, second, strlen(second));
+	strncpy(atmPath, second, strlen(second));
 
-	while(next != NULL) {
-		fName = next;
-		next = strtok(NULL, "/");
-	} //gets filename
+	bankPath[filenamelen] = '.';
+	bankPath[filenamelen+1] = 'b';
+	bankPath[filenamelen+2] = 'a';
+	bankPath[filenamelen+3] = 'n';
+	bankPath[filenamelen+4] = 'k';
+	bankPath[filenamelen+5] = 0;
 
-	bankPath = (char *) malloc(1 + strlen(second) + strlen(".bank"));
-	atmPath = (char *) malloc(1 + strlen(second) + strlen(".atm"));
+	atmPath[filenamelen] = '.';
+	atmPath[filenamelen+1] = 'a';
+	atmPath[filenamelen+2] = 't';
+	atmPath[filenamelen+3] = 'm';
+	atmPath[filenamelen+4] = 0;
 
-	strcat(bankPath, ".bank");
-	strcat(atmPath, ".atm");
+	if(access(bankPath, F_OK) != -1 || access(atmPath, F_OK) != -1) {
+		printf("Error: one of the files already exists\n");
 
-	d = opendir(path2);
+		free(bankPath);
+		free(atmPath);
 
-	if(d == NULL) {
-		printf("Error creating initialization files\n");
-		return 64;
-	} //directory doesn't exist
-	else {
-		while((dir = readdir(d)) != NULL) {
-			if((strcmp(dir->d_name, bankPath) == 0) || (strcmp(dir->d_name, atmPath) == 0)) {
-				exists = 0;
-				break;
-			}
-		} //checks if the files already exist
+		return 63;
+	} else {
+	    bankFile = fopen(bankPath, "w+");
+		atmFile = fopen(atmPath, "w+");
 
-		if(exists == 0) {
-			printf("Error: one of the files already exists\n");
-
-			return 63;
-		} //must not create either file nor overwrite the existing ones
-		else {
-			bankFile = fopen(bankPath, "w");
-			atmFile = fopen(atmPath, "w");
-
-			fprintf(bankFile, "%s", key);
-			fprintf(bankFile, "%s", iv);
-			fprintf(atmFile, "%s", key);
-			fprintf(atmFile, "%s", iv);
+		if(bankFile != NULL || atmFile != NULL){
+			fwrite(key, 1, 32, bankFile);
+			fwrite(iv, 1, 16, bankFile);
+			fwrite(key, 1, 32, atmFile);
+			fwrite(iv, 1, 16, atmFile);
 
 			printf("Successfully initialized bank state\n");
 
 			fclose(bankFile);
 			fclose(atmFile);
+		}
+		else{
+			printf("Error creating initialization files\n");
 
-			return 0;
+			free(bankPath);
+			free(atmPath);
+			return 64;
 		}
 	}
 
-	printf("Error creating initialization files\n"); //if the program fails for any other reason
-		
-	return 64;
+	free(bankPath);
+	free(atmPath);
+
+	return 0;
 }

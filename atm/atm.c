@@ -133,11 +133,19 @@ void atm_process_command(ATM *atm, char *command)
                 atm_recv(atm, retData, 2);
 
                 if(retData[1] == 1){
-                    char *fileName = username; //formats to the file name
                     char *pinInput = NULL;
                     FILE *file;
+                    char *filename = malloc(strlen(username) + 6);
 
-                    sprintf(fileName, "%s.card", username);
+
+                    memcpy(filename, username, strlen(username));
+                    filename[strlen(username)] = '.';
+                    filename[strlen(username)+1] = 'c';
+                    filename[strlen(username)+2] = 'a';
+                    filename[strlen(username)+3] = 'r';
+                    filename[strlen(username)+4] = 'd';
+                    filename[strlen(username)+5] = 0;
+
                     file = fopen(fileName, "r");
                     if (file != NULL) {
                         int holdnamelen;
@@ -191,6 +199,8 @@ void atm_process_command(ATM *atm, char *command)
                     else{
                         printf("Unable to access %s's card\n", username);
                     }
+                
+                    free(filename);
                 }
                 else{
                     printf("No such user\n");
