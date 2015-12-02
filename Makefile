@@ -1,14 +1,14 @@
 CC = gcc
-CFLAGS = -fno-stack-protector -Wall -Iutil -Iatm -Ibank -Irouter -I.
-LIBS=-lcrypto
+CFLAGS = -fno-stack-protector -Wall -Iutil -Iatm -Ibank -Irouter -I. -I/usr/local/ssl/include -L/usr/local/ssl/lib
+LIBS = -lcrypto
 
 all: bin/atm bin/bank bin/router
 
 bin/atm : atm/atm-main.c atm/atm.c
-	${CC} ${CFLAGS} atm/atm.c atm/atm-main.c -o bin/atm $(LIBS)
+	${CC} ${CFLAGS} atm/atm.c atm/atm-main.c -o bin/atm ${LIBS} 
 
 bin/bank : bank/bank-main.c bank/bank.c
-	${CC} ${CFLAGS} bank/bank.c bank/bank-main.c -o bin/bank $(LIBS)
+	${CC} ${CFLAGS} bank/bank.c bank/bank-main.c -o bin/bank ${LIBS}
 
 bin/router : router/router-main.c router/router.c
 	${CC} ${CFLAGS} router/router.c router/router-main.c -o bin/router

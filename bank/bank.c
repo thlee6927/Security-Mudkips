@@ -2,8 +2,12 @@
 #include "ports.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <openssl/evp.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 Bank* bank_create()
 {
@@ -130,10 +134,10 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
                     if(strlen(asdf) != strlen(balanceStr))
                         printf("Usage: create-user <user-name> <pin> <balance>\n");
                     else{
-                        Node *user = get_client(clientHead, name);
+                        Node *user = get_client(bank->clientHead, name);
                         if(user == NULL){
                             Node *put = malloc(sizeof(Node));
-                            File *file;
+                            FILE *file;
                             char *filename;
 
                             sprintf(filename, "%s.card", name);
@@ -146,9 +150,13 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
                                 uint32_t namelen = strlen(name);
                                 unsigned char *data = malloc(4 + namelen + 32);
                                 put->name = malloc(strlen(name) + 1);
-                                put->PIN = malloc(4);
-                                strcpy(put->name, name, strlen(name));
-                                memcpy(put->PIN, pinStr, 4);
+                                strcpy(put->name, name);
+
+                                put->PIN[0] = pinStr[0];
+                                put->PIN[1] = pinStr[1];
+                                put->PIN[2] = pinStr[2];
+                                put->PIN[3] = pinStr[3];
+
                                 put->balance = balance;
                                 put->next = bank->clientHead;
                                 if(bank->clientHead != NULL)
@@ -256,6 +264,7 @@ void bank_process_remote_command(Bank *bank, char *command, size_t len)
 {
     // TODO: Implement the bank side of the ATM-bank protocol
     uint8_t opcode = *((uint8_t *) command);
+    char errM[] = {0,0};
 
     if(opcode == 1){
         int namelen;
@@ -287,8 +296,7 @@ void bank_process_remote_command(Bank *bank, char *command, size_t len)
     }
     else{
         uint8_t *mesHash = command + len-32;
-        int messlen = len-33
-        char errM = {0,0};
+        int messlen = len-33;
         if(messlen > 5){
             int namelen;
             char *name;

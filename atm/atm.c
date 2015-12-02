@@ -2,6 +2,7 @@
 #include "ports.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <limits.h>
 #include <arpa/inet.h>
@@ -61,6 +62,32 @@ ssize_t atm_recv(ATM *atm, char *data, size_t max_data_len)
     return recvfrom(atm->sockfd, data, max_data_len, 0, NULL, NULL);
 }
 
+/*Checks if a string contains only [a-zA-Z+]*/
+int isChar(char *str, int len){
+    int i = 0;
+    for(i = 0; i < len; i++){
+        char c = str[i];
+        if((97 <= c && 122 >= c) || (65 <= c && 90 >= c))
+            continue;
+        else
+            return 0;
+    }
+    return 1;
+}
+
+/*Checks if a string only contains [0-9]*/
+int isNum(char *str, int len){
+    int i = 0;
+    for(i = 0; i < len; i++){
+        char c = str[i];
+        if(48 <= c && 57 >= c)
+            continue;
+        else
+            return 0;
+    }
+    return 1;
+}
+
 int compHash(uint8_t *hash1, uint8_t *hash2){
     int i = 0;
     for(i = 0; i < 32; i++){
@@ -108,7 +135,7 @@ void atm_process_command(ATM *atm, char *command)
                 if(retData[1] == 1){
                     char *fileName = username; //formats to the file name
                     char *pinInput = NULL;
-                    File *file;
+                    FILE *file;
 
                     sprintf(fileName, "%s.card", username);
                     file = fopen(fileName, "r");
@@ -147,7 +174,7 @@ void atm_process_command(ATM *atm, char *command)
                                 User *user = malloc(sizeof(User));
 
                                 user->name = malloc(strlen(username) + 1);
-                                strcpy(user->name, username, strlen(username));
+                                strcpy(user->name, username);
 
                                 user->PIN[0] = pinInput[0];
                                 user->PIN[1] = pinInput[1];
@@ -200,8 +227,8 @@ void atm_process_command(ATM *atm, char *command)
 
                     namelen = htonl(namelen);
                     memcpy(message, &namelen, 4);
-                    memcpy(message + 4, username, strlen(username));
-                    memcpy(message + 4 + strlen(username), &amountNL, 4);
+                    memcpy(message + 4, atm->currentUser->name, strlen(atm->currentUser->name));
+                    memcpy(message + 4 + strlen(atm->currentUser->name), &amountNL, 4);
 
                     EVP_DigestInit_ex(hashctx, EVP_sha256(), NULL);
 
@@ -260,7 +287,7 @@ void atm_process_command(ATM *atm, char *command)
 
                         namelen = htonl(namelen);
                         memcpy(message, &namelen, 4);
-                        memcpy(message + 4, username, strlen(username));
+                        memcpy(message + 4, atm->currentUser->name, strlen(atm->currentUser->name));
 
                         EVP_DigestInit_ex(hashctx, EVP_sha256(), NULL);
 
@@ -291,10 +318,6 @@ void atm_process_command(ATM *atm, char *command)
 
                         free(message);
                         free(sendData);
-
-                        //GET BALANCE FROM BANK
-
-                        printf("$" + balance + "\n");
                     }
                 }
             }
@@ -324,30 +347,4 @@ void atm_process_command(ATM *atm, char *command)
         }
     }
 
-}
-
-/*Checks if a string contains only [a-zA-Z+]*/
-int isChar(char *str, int len){
-    int i = 0;
-    for(i = 0; i < len; i++){
-        char c = str[i];
-        if((97 <= c && 122 >= c) || (65 <= c && 90 >= c))
-            continue;
-        else
-            return 0;
-    }
-    return 1;
-}
-
-/*Checks if a string only contains [0-9]*/
-int isNum(char *str, int len){
-    int i = 0;
-    for(i = 0; i < len; i++){
-        char c = str[i];
-        if(48 <= c && 57 >= c)
-            continue;
-        else
-            return 0;
-    }
-    return 1;
 }
