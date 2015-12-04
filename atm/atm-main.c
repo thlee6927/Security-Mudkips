@@ -57,7 +57,7 @@ int main(int argc, char**argv)
         atm_process_command(atm, user_input);
 
         if(atm->currentUser != NULL) {
-            printf("ATM (%s): \n", atm->currentUser->name);
+            printf("ATM (%s): ", atm->currentUser->name);
         }
         else {
             printf("%s", prompt);
