@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <limits.h>
 #include <openssl/evp.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -130,10 +131,8 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
                     printf("Usage: create-user <user-name> <pin> <balance>\n");
                 }
                 else{
-                    unsigned int balance = strtol(balanceStr, NULL, 10);
-                    //char asdf[12];
-                    //printf(asdf, "%d",balance);
-                    if(1 == 0) //strlen(asdf) != strlen(balanceStr)-1)
+                    unsigned int balance = atoi(balanceStr);
+                    if(balance >= INT_MAX) 
                         printf("Usage: create-user <user-name> <pin> <balance>\n");
                     else{
                         Node *user = NULL;
@@ -214,26 +213,25 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
                 if(name == NULL || amtStr == NULL || check != NULL)
                     printf("Usage: deposit <user-name> <amt>\n");
                 else{
-                    if(strlen(name) > 250 || isChar(name, strlen(name)) == 0 || isNum(amtStr, strlen(amtStr)) == 0){
+                    if(strlen(name) > 250 || isChar(name, strlen(name)) == 0 || isNum(amtStr, strlen(amtStr)-1) == 0){
                         printf("Usage: deposit <user-name> <amt>\n");
                     }
                     else{
-                        unsigned int amt = strtol(amtStr, NULL, 10);
-                        char asdf[99];
-                        sprintf(asdf, "%d",amt);
-                        if(strlen(asdf) != strlen(amtStr))
-                            printf("Usage: deposit <user-name> <amt>\n");
+                        unsigned int amt = atoi(amtStr);
+                        if(amt >= INT_MAX)
+                            printf("Usage: deposit <user-name> <amt> \n");
                         else{  
                             Node *user = get_client(bank->clientHead, name);
                             if(user == NULL){
                                 printf("No such user\n");
                             }
                             else{
-                                if(user->balance + amt < user->balance)
+                                unsigned int newbal = user->balance + amt;
+                                if(newbal < user->balance)
                                     printf("Too rich for this program\n");
                                 else{
-                                    user->balance = user->balance + amt;
-                                    printf("$%i added to %s's account\n", amt, name);
+                                    user->balance = newbal;
+                                    printf("$%u added to %s's account %u %u\n", amt, name,newbal, user->balance);
                                 }
                             }
                         }
@@ -248,16 +246,22 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
                     if(name == NULL || check != NULL)
                         printf("Usage: balance <user-name>\n");
                     else{
-                        if(strlen(name) > 250 || isChar(name, strlen(name)) == 0){
+                        if(strlen(name) > 250 || isChar(name, strlen(name)-1) == 0){
                             printf("Usage: balance <user-name>\n");
                         }
                         else{
-                            Node *user = get_client(bank->clientHead, name);
+                            Node *user = NULL;
+
+                            name[strlen(name)-1] = 0;
+
+                            if(bank->clientHead != NULL)
+                                user = get_client(bank->clientHead, name);
+
                             if(user == NULL){
                                 printf("No such user\n");
                             }
                             else{
-                                printf("$%i\n", user->balance);
+                                printf("$%u\n", user->balance);
                             }
                         }
                     }

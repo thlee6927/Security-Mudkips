@@ -107,10 +107,11 @@ void atm_process_command(ATM *atm, char *command)
         char *username = strtok(NULL, " "); //gets user name (aka next token)
 
         invalid = strtok(NULL, " "); //checks to make sure no extra words afterwards
-        if((strlen(username) > 250) || (isChar(username, strlen(username)) == 0) || (invalid != NULL)) {
+        if((strlen(username) > 250) || (isChar(username, strlen(username)-1) == 0) || (invalid != NULL)) {
             printf("Usage: begin-session <user-name>\n");
         } //invalid inputs
         else{
+            username[strlen(username)-1] = 0;
             if(atm->currentUser != NULL){
                 printf("A user is already logged in\n");
             }
@@ -135,16 +136,16 @@ void atm_process_command(ATM *atm, char *command)
                 if(retData[1] == 1){
                     char *pinInput = NULL;
                     FILE *file;
-                    char *filename = malloc(strlen(username) + 6);
+                    char *fileName = malloc(strlen(username) + 6);
 
 
-                    memcpy(filename, username, strlen(username));
-                    filename[strlen(username)] = '.';
-                    filename[strlen(username)+1] = 'c';
-                    filename[strlen(username)+2] = 'a';
-                    filename[strlen(username)+3] = 'r';
-                    filename[strlen(username)+4] = 'd';
-                    filename[strlen(username)+5] = 0;
+                    memcpy(fileName, username, strlen(username));
+                    fileName[strlen(username)] = '.';
+                    fileName[strlen(username)+1] = 'c';
+                    fileName[strlen(username)+2] = 'a';
+                    fileName[strlen(username)+3] = 'r';
+                    fileName[strlen(username)+4] = 'd';
+                    fileName[strlen(username)+5] = 0;
 
                     file = fopen(fileName, "r");
                     if (file != NULL) {
@@ -200,7 +201,7 @@ void atm_process_command(ATM *atm, char *command)
                         printf("Unable to access %s's card\n", username);
                     }
                 
-                    free(filename);
+                    free(fileName);
                 }
                 else{
                     printf("No such user\n");
@@ -217,7 +218,7 @@ void atm_process_command(ATM *atm, char *command)
                 printf("No user logged in\n");
             }
             else {
-                if(isNum(amtStr, strlen(amtStr)) == 0 || invalid != NULL || (atoi(amtStr) > INT_MAX)) {
+                if(isNum(amtStr, strlen(amtStr)-1) == 0 || invalid != NULL || (atoi(amtStr) > INT_MAX)) {
                     printf("Usage: withdraw <amt>\n");
                 } //invalid inputs
                 else{
@@ -272,6 +273,8 @@ void atm_process_command(ATM *atm, char *command)
 
         }
         else{
+            if(token != NULL)
+                token[strlen(token)-1]=0;
             if((strcmp ("balance", token)) == 0) {
                 invalid = strtok(NULL, " ");
 
