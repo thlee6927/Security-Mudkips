@@ -228,7 +228,7 @@ void atm_process_command(ATM *atm, char *command)
                     int namelen = strlen(atm->currentUser->name);
                     int datalen = namelen + 8;
                     uint8_t retData[2];
-                    uint8_t amountNL = htonl(amount);
+                    uint32_t amountNL = htonl(amount);
                     EVP_MD_CTX *hashctx = EVP_MD_CTX_create();
                     uint8_t thehash[32];
                     int hashlen;
