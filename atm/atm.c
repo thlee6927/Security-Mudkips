@@ -134,7 +134,7 @@ void atm_process_command(ATM *atm, char *command)
                 atm_recv(atm, retData, 2);
 
                 if(retData[1] == 1){
-                    char *pinInput = NULL;
+                    char pinInput[10000];
                     FILE *file;
                     char *fileName = malloc(strlen(username) + 6);
 
