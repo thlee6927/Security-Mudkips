@@ -353,6 +353,7 @@ void bank_process_remote_command(Bank *bank, char *command, size_t len)
                         uint32_t with = *((uint32_t *)(data+namelen+4));
 
                         with = ntohl(with);
+                        sendback[0] = 2;
 
                         if(with < user->balance){
                             user->balance = user->balance - with;
@@ -366,11 +367,12 @@ void bank_process_remote_command(Bank *bank, char *command, size_t len)
                     }
                     else{
                         if(opcode == 3){
-                            uint8_t *sendback = malloc(5);
+                            uint8_t *sendback = malloc(6);
                             uint32_t bal = htonl(user->balance);
                             sendback[0] = 3;
+                            sendback[1] = 1;
 
-                            memcpy(sendback + 1, &bal, 4);
+                            memcpy(sendback + 2, &bal, 4);
 
                             bank_send(bank, sendback, 5);
                             free(sendback);
