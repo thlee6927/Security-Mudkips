@@ -374,7 +374,7 @@ void bank_process_remote_command(Bank *bank, char *command, size_t len)
 
                             memcpy(sendback + 2, &bal, 4);
 
-                            bank_send(bank, sendback, 5);
+                            bank_send(bank, sendback, 6);
                             free(sendback);
                         }
                         else{
