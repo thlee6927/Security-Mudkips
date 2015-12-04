@@ -162,7 +162,7 @@ void atm_process_command(ATM *atm, char *command)
 
                         fgets(pinInput, 10000, stdin);
 
-                        if(strlen(pinInput) != 4 || isNum(pinInput, strlen(pinInput)) == 0) {
+                        if(strlen(pinInput) != 5 || isNum(pinInput, strlen(pinInput) - 1) == 0) {
                             printf("Not authorized\n");
                         }
                         else {
@@ -318,7 +318,7 @@ void atm_process_command(ATM *atm, char *command)
 
                         atm_send(atm, sendData, datalen+33);
 
-                        atm_recv(atm, retData, 2);
+                        atm_recv(atm, retData, 6);
 
                         if(retData[1] == 1) {
                             uint32_t balNL= *((uint32_t *)(retData+2));
@@ -326,7 +326,7 @@ void atm_process_command(ATM *atm, char *command)
                             printf("$%i\n",balance);
                         }
                         else {
-                            printf("Unauthorized");
+                            printf("Unauthorized\n");
                         } //sufficient funds in bank
 
                         free(message);
