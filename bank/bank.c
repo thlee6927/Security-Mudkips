@@ -219,7 +219,7 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
                     else{
                         unsigned int amt = atoi(amtStr);
                         if(amt >= INT_MAX)
-                            printf("Usage: deposit <user-name> <amt> \n");
+                            printf("Too rich for this program\n");
                         else{  
                             Node *user = get_client(bank->clientHead, name);
                             if(user == NULL){
@@ -227,11 +227,11 @@ void bank_process_local_command(Bank *bank, char *command, size_t len)
                             }
                             else{
                                 unsigned int newbal = user->balance + amt;
-                                if(newbal < user->balance)
+                                if(newbal >= INT_MAX)
                                     printf("Too rich for this program\n");
                                 else{
                                     user->balance = newbal;
-                                    printf("$%u added to %s's account %u %u\n", amt, name,newbal, user->balance);
+                                    printf("$%u added to %s's account\n", amt, name);
                                 }
                             }
                         }
